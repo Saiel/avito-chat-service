@@ -6,16 +6,19 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
 
+// Handler stores configuration for migrations
 type Handler struct {
 	WriteStdin         bool
 	WriteStderr        bool
 	MigrationTableName string
 }
 
+// InitMigrations creates table with trigger to track migrations
 func (hnd *Handler) InitMigrations(dbx *sqlx.DB) error {
 	_, err := dbx.Exec(`
 	CREATE TABLE IF NOT EXISTS ` + hnd.MigrationTableName + ` (
@@ -47,6 +50,7 @@ func (hnd *Handler) InitMigrations(dbx *sqlx.DB) error {
 	return err
 }
 
+// Migrate recursively executes all files in given directory if they did not executed before
 func (hnd *Handler) Migrate(dbx *sqlx.DB, pathToMigrations string) error {
 	hnd.println("Starting migration...")
 	err := hnd.migrate(dbx, pathToMigrations)
@@ -72,65 +76,74 @@ func (hnd *Handler) migrate(dbx *sqlx.DB, pathToMigrations string) error {
 			newMifrationFolder := path.Join(pathToMigrations, file.Name())
 			err = hnd.migrate(dbx, newMifrationFolder) // reqursively migrate with subdirectories
 			if err != nil {
-				hnd.errorf("Cannot read directory %v: %v\n", newMifrationFolder, err)
 				return err
 			}
 		} else {
-			isMigrated, err := hnd.checkIfMigrated(dbx, file.Name())
-			if err != nil {
-				hnd.errorf("Error on checking migration: %v\n", err)
-				return err
-			}
-
-			if isMigrated {
-				hnd.println(" Already migrated")
-			} else {
-
-				data, err := ioutil.ReadFile(path.Join(pathToMigrations, file.Name()))
-				if err != nil {
-					hnd.errorf("Cannot read file %v: %v\n", file.Name(), err)
-					return err
-				}
-
-				err = hnd.migrateFile(dbx, file, data)
-				if err != nil {
-					return err
-				}
-				hnd.println(" Success")
-			}
+			hnd.migrateFile(dbx, pathToMigrations, file.Name())
 		}
 	}
 	return nil
 }
 
-func (hnd *Handler) migrateFile(dbx *sqlx.DB, file os.FileInfo, queryBytes []byte) error {
+func (hnd *Handler) migrateFile(dbx *sqlx.DB, parentDir, fileName string) error {
+	if !strings.HasSuffix(fileName, ".sql") {
+		hnd.errorf("Not sql file\n")
+		return fmt.Errorf("File %v is not a sql file", fileName)
+	}
+	migrationName := strings.TrimSuffix(fileName, ".sql")
+
+	isMigrated, err := hnd.checkIfMigrated(dbx, migrationName)
+	if err != nil {
+		hnd.errorf("Error on checking migration: %v\n", err)
+		return err
+	}
+
+	if isMigrated {
+		hnd.println(" Already migrated")
+	} else {
+		data, err := ioutil.ReadFile(path.Join(parentDir, fileName))
+		if err != nil {
+			hnd.errorf("Cannot read file %v: %v\n", fileName, err)
+			return err
+		}
+
+		err = hnd.performMigrate(dbx, migrationName, data)
+		if err != nil {
+			return err
+		}
+		hnd.println(" Success")
+	}
+	return nil
+}
+
+func (hnd *Handler) performMigrate(dbx *sqlx.DB, migrationName string, queryBytes []byte) error {
 	tx, err := dbx.Beginx()
 	if err != nil {
-		hnd.errorf("File: %v\n Cannot begin transaction: %v\n", file.Name(), err)
+		hnd.errorf("Migration: %v\n Cannot begin transaction: %v\n", migrationName, err)
 		return err
 	}
 
 	buf := bytes.NewBuffer(queryBytes)
 	_, err = tx.Exec(buf.String())
 	if err != nil {
-		hnd.errorf("File: %v\n Error on query: %v\n", file.Name(), err)
+		hnd.errorf("Migration: %v\n Error on query: %v\n", migrationName, err)
 		tx.Rollback()
 		return err
 	}
 
 	_, err = tx.Exec(
 		`INSERT INTO `+hnd.MigrationTableName+` (migration_name) 
-		VALUES ($1)`, file.Name(),
+		VALUES ($1)`, migrationName,
 	)
 	if err != nil {
-		hnd.errorf("File: %v\n Cannot record migration: %v\n", file.Name(), err)
+		hnd.errorf("Migration: %v\n Cannot record migration: %v\n", migrationName, err)
 		tx.Rollback()
 		return err
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		hnd.errorf("File: %v\n Cannot commit transaction: %v\n", file.Name(), err)
+		hnd.errorf("Migration: %v\n Cannot commit transaction: %v\n", migrationName, err)
 		tx.Rollback()
 		return err
 	}
