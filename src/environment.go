@@ -2,7 +2,7 @@ package main
 
 import "time"
 
-type dbSettings struct {
+type dbEnvSettings struct {
 	SQLDriver       string        `required:"true"`
 	Host            string        `required:"true"`
 	Port            string        `required:"true"`
@@ -12,8 +12,9 @@ type dbSettings struct {
 	MaxIdleConns    int           `default:"4"`
 	MaxOpenConns    int           `default:"16"`
 	ConnMaxLifeTime time.Duration `default:"100m"`
+	MigrationsDir   string        `default:"./migrations"`
 }
 
-type appSettings struct {
+type appEnvSettings struct {
 	ServerPort string `required:"true"`
 }
