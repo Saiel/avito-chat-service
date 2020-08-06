@@ -87,8 +87,6 @@ func initDB(hnd *Handler) {
 	if err != nil {
 		log.Fatalln()
 	}
-
-	// prepareQueries(hnd)
 }
 
 func initConnection(hnd *Handler, dbConf *dbEnvSettings) error {
@@ -128,26 +126,6 @@ func buildDataSourceName(dbConf *dbEnvSettings) string {
 	dsnBuilder.WriteString(" sslmode=disable")
 
 	return dsnBuilder.String()
-}
-
-func prepareQueries(hnd *Handler) {
-	hnd.queries = make(map[string]*sqlx.Stmt)
-	hnd.queries["create-user"] = prepareStmt(hnd, `INSERT INTO users_table (username) VALUES ($1)`)
-	hnd.queries["create-chat"] = prepareStmt(hnd, `INSERT INTO chats_table (chat_name) VALUES ($1)`)
-	hnd.queries["add-user-to-chat"] = prepareStmt(hnd, `INSERT INTO chats_users_table (chat_id, user_id) VALUES ($1, $2)`)
-	hnd.queries["create-message"] = prepareStmt(hnd, `INSERT INTO messages_table (chat, author, text) VALUES ($1, $2, $3)`)
-	hnd.queries["get-chats-of-user"] = prepareStmt(hnd, `SELECT id, name, created_at 
-	FROM chats_table AS ch, users_table AS us, chats_users_table AS ch_us 
-	WHERE ch.id = ch_us.chat AND us.id = ch_us.user`)
-	// hnd.queries["get-messages-from-chat"] = prepareStmt(hnd, `SELECT `)
-}
-
-func prepareStmt(hnd *Handler, query string) *sqlx.Stmt {
-	st, err := hnd.DB.Preparex(query)
-	if err != nil {
-		log.Fatalf("Cannot prepare statement: '%v'\nError: %v", query, err)
-	}
-	return st
 }
 
 func main() {
