@@ -1,5 +1,9 @@
 version: "3.7"
 
+networks: 
+  db-net:
+    driver: bridge
+
 services:
   db:
     build: ./image-postgres
@@ -8,4 +12,17 @@ services:
       - 5432:5432
     volumes: 
       - ./postgres:/bitnami/postgresql
+    networks: 
+      - db-net
+    restart: "on-failure"
+
+  web:
+    build: ./
+    env_file: .env
+    ports:
+      - 9000:9000
+    networks: 
+      - db-net
+    depends_on:
+      - db
     restart: "on-failure"
