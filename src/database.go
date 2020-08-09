@@ -4,7 +4,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Saiel/avito-chat-serivce/src/lib/migrations"
 	"github.com/jmoiron/sqlx"
 	"github.com/kelseyhightower/envconfig"
 )
@@ -23,7 +22,7 @@ func initDB(hnd *Handler) {
 		log.Fatalf("Cannot connect to database: %v", err)
 	}
 
-	migrationsHnd := &migrations.Handler{
+	migrationsHnd := &MigrationsHandler{
 		WriteStdin:         true,
 		WriteStderr:        true,
 		MigrationTableName: "migrations_chat_service",
