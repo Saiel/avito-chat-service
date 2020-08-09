@@ -104,14 +104,14 @@ func buildQueryGetChats(request *requestGetChats) (query string, args []interfac
 }
 
 // restrictMethods is a middleware, which prohibit all http methods for handler that not in given slice
-func restrictMethods(methods []string, f http.HandlerFunc) http.HandlerFunc {
+func restrictMethods(methods []string, nextHandler http.Handler) http.Handler {
 	sort.Strings(methods)
-	return func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		i := sort.SearchStrings(methods, r.Method)
 		if i < len(methods) && methods[i] == r.Method {
-			f(w, r)
+			nextHandler.ServeHTTP(w, r)
 		} else {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-	}
+	})
 }

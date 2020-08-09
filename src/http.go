@@ -341,11 +341,26 @@ func (hnd *Handler) getMessages(w http.ResponseWriter, r *http.Request) {
 // initMux creates new router and links uri with functions
 func initMux(hnd *Handler) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/users/add", restrictMethods([]string{"POST"}, hnd.createUser))
-	mux.HandleFunc("/chats/add", restrictMethods([]string{"POST"}, hnd.createChat))
-	mux.HandleFunc("/chats/get", restrictMethods([]string{"POST"}, hnd.getChats))
-	mux.HandleFunc("/messages/add", restrictMethods([]string{"POST"}, hnd.sendMessage))
-	mux.HandleFunc("/messages/get", restrictMethods([]string{"POST"}, hnd.getMessages))
+	mux.Handle("/users/add", restrictMethods(
+		[]string{"POST"},
+		http.HandlerFunc(hnd.createUser)),
+	)
+	mux.Handle("/chats/add", restrictMethods(
+		[]string{"POST"},
+		http.HandlerFunc(hnd.createChat)),
+	)
+	mux.Handle("/chats/get", restrictMethods(
+		[]string{"POST"},
+		http.HandlerFunc(hnd.getChats)),
+	)
+	mux.Handle("/messages/add", restrictMethods(
+		[]string{"POST"},
+		http.HandlerFunc(hnd.sendMessage)),
+	)
+	mux.Handle("/messages/get", restrictMethods(
+		[]string{"POST"},
+		http.HandlerFunc(hnd.getMessages)),
+	)
 
 	return mux
 }
