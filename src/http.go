@@ -11,17 +11,19 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// Handler stores connection pool to database
 type Handler struct {
-	DB      *sqlx.DB
-	queries map[string]*sqlx.Stmt
+	DB *sqlx.DB
 }
 
+// User is struct for (de)serializtion for user resourse from/to db and json
 type User struct {
 	ID        int64     `db:"id"         json:"id,omitempty"`
 	Username  string    `db:"username"   json:"username"`
 	CreatedAt time.Time `db:"created_at" json:"created_at,omitempty"`
 }
 
+// Chat is struct for (de)serializtion for chat resourse from/to db and json
 type Chat struct {
 	ID            int64     `db:"id"              json:"id,omitempty"`
 	Name          string    `db:"chat_name"       json:"name"`
@@ -30,6 +32,7 @@ type Chat struct {
 	LastMessageAt time.Time `db:"last_message_at" json:"last_message_at,omitempty"`
 }
 
+// Message is struct for (de)serializtion for message resourse from/to db and json
 type Message struct {
 	ID        int64     `db:"id"         json:"id,omitempty"`
 	Chat      int64     `db:"chat_id"    json:"chat"`
@@ -38,10 +41,12 @@ type Message struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at,omitempty"`
 }
 
+// ErrorMessage is struct for deserialization to json for error responses
 type ErrorMessage struct {
-	Error string
+	Error string `json:"error"`
 }
 
+// sendError sends error message in format {"error": "<message>"} to response writer w
 func sendError(w http.ResponseWriter, statusCode int, errorMessage string) {
 	w.WriteHeader(statusCode)
 	errorStruct := ErrorMessage{
@@ -51,11 +56,21 @@ func sendError(w http.ResponseWriter, statusCode int, errorMessage string) {
 	w.Write(errMsg)
 }
 
+// createUser takes json with single argument "username" and creates user with given username.
+// Response codes:
+// 	201:
+// 		User created. No error.
+// 	400:
+//		User with given username already exists or argument "username" not given.
+// 	500:
+// 		Error in database. See error message for details.
+// Body returns:
+// 	User resource with status 201 or error message with others.
 func (hnd *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	newUser := new(User)
 	err := json.NewDecoder(r.Body).Decode(newUser)
-	if err != nil {
+	if err != nil || newUser.Username == "" {
 		sendError(w, http.StatusBadRequest, err.Error())
 	} else {
 
@@ -83,11 +98,21 @@ func (hnd *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// createChat takes json with single argument "name" and creates chat with given name.
+// Response codes:
+// 	201:
+// 		Chat created. No error.
+// 	400:
+//		Chat with given name already exists or argument "name" not given.
+// 	500:
+// 		Error in database. See error message for details.
+// Body returns:
+// 	Chat resource with status 201 or error message with others.
 func (hnd *Handler) createChat(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	newChat := new(Chat)
 	err := json.NewDecoder(r.Body).Decode(newChat)
-	if err != nil {
+	if err != nil || newChat.Name == "" {
 		sendError(w, http.StatusBadRequest, err.Error())
 	} else {
 		createChatTx, err := hnd.DB.Beginx()
@@ -133,11 +158,23 @@ func (hnd *Handler) createChat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// sendMessage takes message resourse as argument and creates message to given chat from given user.
+// Response codes:
+// 	201:
+// 		Message sent. No error.
+// 	400:
+//		Invalid message resourse given
+// 	404:
+//		Chat or author not found
+// 	500:
+// 		Error in database. See error message for details.
+// Body returns:
+// 	Full message resource with status 201 or error message with others.
 func (hnd *Handler) sendMessage(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	newMes := new(Message)
 	err := json.NewDecoder(r.Body).Decode(newMes)
-	if err != nil {
+	if err != nil || newMes.Author == 0 || newMes.Chat == 0 || newMes.Text == "" {
 		sendError(w, http.StatusBadRequest, err.Error())
 	} else {
 		err = hnd.DB.Get(newMes, `
@@ -166,11 +203,24 @@ type requestGetChats struct {
 	requestList
 }
 
+// getChats takes json with single argument "user" (its id) and returns list of chat resources.
+// Also has optional arguments count and offset for limit number of returned chats.
+// Response codes:
+// 	200:
+// 		No error.
+// 	400:
+//		Argument "user" not given.
+// 	404:
+// 		Given user not found.
+// 	500:
+// 		Error in database. See error message for details.
+// Body returns:
+// 	List of full chat resources with status 200 or error message with others.
 func (hnd *Handler) getChats(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	request := new(requestGetChats)
 	err := json.NewDecoder(r.Body).Decode(&request)
-	if err != nil {
+	if err != nil || request.User == 0 {
 		sendError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -221,6 +271,19 @@ type requestGetMesages struct {
 	requestList
 }
 
+// getMessages takes json with single argument "chat" (its id) and returns list of message resources.
+// Also has optional arguments count and offset for limit number of returned chats.
+// Response codes:
+// 	200:
+// 		No error.
+// 	400:
+//		Argument "chat" not given.
+// 	404:
+// 		Given chat not found.
+// 	500:
+// 		Error in database. See error message for details.
+// Body returns:
+// 	List of full message resources with status 200 or error message with others.
 func (hnd *Handler) getMessages(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	request := new(requestGetMesages)
@@ -275,6 +338,7 @@ func (hnd *Handler) getMessages(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
+// initMux creates new router and links uri with functions
 func initMux(hnd *Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/users/add", restrictMethods([]string{"POST"}, hnd.createUser))

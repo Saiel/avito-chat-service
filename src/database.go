@@ -9,6 +9,8 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+// initDB connects to database with given config as environment variables with prefix DB_
+// and handles new migrations
 func initDB(hnd *Handler) {
 	dbConf := new(dbEnvSettings)
 	err := envconfig.Process("db", dbConf)
@@ -36,6 +38,7 @@ func initDB(hnd *Handler) {
 	}
 }
 
+// initConnections directly connects to db and returns error, if something went wrong
 func initConnection(hnd *Handler, dbConf *dbEnvSettings) error {
 	dsn := buildDataSourceName(dbConf)
 
@@ -51,6 +54,7 @@ func initConnection(hnd *Handler, dbConf *dbEnvSettings) error {
 	return nil
 }
 
+// buildDataSourceName build connection string
 func buildDataSourceName(dbConf *dbEnvSettings) string {
 	dsnBuilder := &strings.Builder{}
 	dsnBuilder.Grow(256)

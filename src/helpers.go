@@ -9,6 +9,8 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+// requestList is struct with fields for limiting number of items in returned list
+// Uses as parent struct
 type requestList struct {
 	Count  int `json:"count,omitempty"`
 	Offset int `json:"offset,omitempty"`
@@ -101,6 +103,7 @@ func buildQueryGetChats(request *requestGetChats) (query string, args []interfac
 	return builder.String(), args
 }
 
+// restrictMethods is a middleware, which prohibit all http methods for handler that not in given slice
 func restrictMethods(methods []string, f http.HandlerFunc) http.HandlerFunc {
 	sort.Strings(methods)
 	return func(w http.ResponseWriter, r *http.Request) {
