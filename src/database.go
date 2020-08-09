@@ -44,10 +44,10 @@ func initConnection(hnd *Handler, dbConf *dbEnvSettings) error {
 		return err
 	}
 
+	db.SetMaxIdleConns(dbConf.MaxIdleConns)
+	db.SetMaxOpenConns(dbConf.MaxOpenConns)
+	db.SetConnMaxLifetime(dbConf.ConnMaxLifeTime)
 	hnd.DB = db
-	hnd.DB.SetMaxIdleConns(dbConf.MaxIdleConns)
-	hnd.DB.SetMaxOpenConns(dbConf.MaxOpenConns)
-	hnd.DB.SetConnMaxLifetime(dbConf.ConnMaxLifeTime)
 	return nil
 }
 
