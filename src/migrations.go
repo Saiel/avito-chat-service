@@ -1,4 +1,4 @@
-package migrations
+package main
 
 import (
 	"bytes"
@@ -11,15 +11,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Handler stores configuration for migrations
-type Handler struct {
+// MigrationsHandler stores configuration for migrations
+type MigrationsHandler struct {
 	WriteStdin         bool
 	WriteStderr        bool
 	MigrationTableName string
 }
 
 // InitMigrations creates table with trigger to track migrations
-func (hnd *Handler) InitMigrations(dbx *sqlx.DB) error {
+func (hnd *MigrationsHandler) InitMigrations(dbx *sqlx.DB) error {
 	_, err := dbx.Exec(`
 	CREATE TABLE IF NOT EXISTS ` + hnd.MigrationTableName + ` (
 		migration_name varchar(80)
@@ -51,7 +51,7 @@ func (hnd *Handler) InitMigrations(dbx *sqlx.DB) error {
 }
 
 // Migrate recursively executes all files in given directory if they did not executed before
-func (hnd *Handler) Migrate(dbx *sqlx.DB, pathToMigrations string) error {
+func (hnd *MigrationsHandler) Migrate(dbx *sqlx.DB, pathToMigrations string) error {
 	hnd.println("Starting migration...")
 	err := hnd.migrate(dbx, pathToMigrations)
 	if err == nil {
@@ -62,7 +62,7 @@ func (hnd *Handler) Migrate(dbx *sqlx.DB, pathToMigrations string) error {
 	return err
 }
 
-func (hnd *Handler) migrate(dbx *sqlx.DB, pathToMigrations string) error {
+func (hnd *MigrationsHandler) migrate(dbx *sqlx.DB, pathToMigrations string) error {
 	fileInfos, err := ioutil.ReadDir(pathToMigrations)
 	if err != nil {
 		hnd.errorf("Cannot read path to migrations folder: %v\n", err)
@@ -85,7 +85,7 @@ func (hnd *Handler) migrate(dbx *sqlx.DB, pathToMigrations string) error {
 	return nil
 }
 
-func (hnd *Handler) migrateFile(dbx *sqlx.DB, parentDir, fileName string) error {
+func (hnd *MigrationsHandler) migrateFile(dbx *sqlx.DB, parentDir, fileName string) error {
 	if !strings.HasSuffix(fileName, ".sql") {
 		hnd.errorf("Not sql file\n")
 		return fmt.Errorf("File %v is not a sql file", fileName)
@@ -116,7 +116,7 @@ func (hnd *Handler) migrateFile(dbx *sqlx.DB, parentDir, fileName string) error 
 	return nil
 }
 
-func (hnd *Handler) performMigrate(dbx *sqlx.DB, migrationName string, queryBytes []byte) error {
+func (hnd *MigrationsHandler) performMigrate(dbx *sqlx.DB, migrationName string, queryBytes []byte) error {
 	tx, err := dbx.Beginx()
 	if err != nil {
 		hnd.errorf("Migration: %v\n Cannot begin transaction: %v\n", migrationName, err)
@@ -150,7 +150,7 @@ func (hnd *Handler) performMigrate(dbx *sqlx.DB, migrationName string, queryByte
 	return nil
 }
 
-func (hnd *Handler) checkIfMigrated(dbx *sqlx.DB, fileName string) (bool, error) {
+func (hnd *MigrationsHandler) checkIfMigrated(dbx *sqlx.DB, fileName string) (bool, error) {
 	// TODO: make less sql requests
 	var res bool
 	err := dbx.Get(&res, `
@@ -163,21 +163,21 @@ func (hnd *Handler) checkIfMigrated(dbx *sqlx.DB, fileName string) (bool, error)
 	return res, nil
 }
 
-func (hnd *Handler) printf(format string, a ...interface{}) (int, error) {
+func (hnd *MigrationsHandler) printf(format string, a ...interface{}) (int, error) {
 	if hnd.WriteStdin {
 		return fmt.Printf(format, a...)
 	}
 	return -1, nil
 }
 
-func (hnd *Handler) println(a ...interface{}) (int, error) {
+func (hnd *MigrationsHandler) println(a ...interface{}) (int, error) {
 	if hnd.WriteStdin {
 		return fmt.Println(a...)
 	}
 	return -1, nil
 }
 
-func (hnd *Handler) errorf(format string, a ...interface{}) (int, error) {
+func (hnd *MigrationsHandler) errorf(format string, a ...interface{}) (int, error) {
 	if hnd.WriteStderr {
 		return fmt.Fprintf(os.Stderr, format, a...)
 	}
