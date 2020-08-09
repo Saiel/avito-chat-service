@@ -16,5 +16,7 @@ type dbEnvSettings struct {
 }
 
 type appEnvSettings struct {
-	ServerPort string `required:"true"`
+	ServerPort       string `required:"true"`
+	MaxChatsCount    int    `default:"20"`
+	MaxMessagesCount int    `default:"50"`
 }
