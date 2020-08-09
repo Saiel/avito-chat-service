@@ -94,7 +94,7 @@ Message in chat. Has this fields:
 
 Methods proces HTTP POST requests with all required parameters in JSON body.
 
-### Create new user
+#### Create new user
 
 Request:
 
@@ -107,7 +107,7 @@ curl --header "Content-Type: application/json" \
 
 Response: `id` of created user or HTTP error code + error description.
 
-### Create new chat with users
+#### Create new chat with users
 
 Request:
 
@@ -122,7 +122,7 @@ Response: `id` of created chat or HTTP error code or HTTP error code + error des
 
 Amount of users in chat is not limited.
 
-### Send message to chat on behalf of the user
+#### Send message to chat on behalf of the user
 
 Request:
 
@@ -135,7 +135,7 @@ curl --header "Content-Type: application/json" \
 
 Response: `id` of created message or HTTP error code + error description.
 
-### Get list of chats of concrete user
+#### Get list of chats of concrete user
 
 Request:
 
@@ -148,7 +148,7 @@ curl --header "Content-Type: application/json" \
 
 Response: list of all user's chats with all fields sorted by last message sended in chat (from last to first) or HTTP error code + error description.
 
-### Get list of messages in concrete chat
+#### Get list of messages in concrete chat
 
 Request:
 
